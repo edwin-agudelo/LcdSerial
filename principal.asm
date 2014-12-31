@@ -31,7 +31,8 @@ drx		equ	0x30	; inicio de los registros que se reciben
 ena		equ 0x7		; LCD Enable
 rs		equ	0x4		; LCD Register Select
 rw		equ	0x6		; LCD Read/Write
-bcklg	equ	0x7		; LCD Backlight
+bcklg	equ	0x3		; LCD Backlight
+bussy	equ	0x4		; ocupado
 echo	equ	0x0		; eco de RX
 prcrx	equ	0x1		; procesar RX
 lact	equ	0x2		; Linea en la que esta (0/1:Arriba/Abajo)
@@ -175,6 +176,8 @@ START:
 	bsf		PORTA,rs
 	clrf	cont
 	clrf	band
+	bsf		PORTB, bcklg
+	bsf		PORTB, bussy
 ciclo:
 	movfw	cont
 	sublw	0x9
@@ -281,7 +284,7 @@ segLin:
 	movwf	verr
 	call 	visu
 	bsf		PORTA, rs
-	movlw	0x10
+	movlw	0x11
 	movwf	cntc
 	return
 
@@ -315,6 +318,7 @@ buecho:
 	
 prcTrama:
 	bcf		band, prcrx
+	bsf		PORTB, bussy
 	movfw	drx
 	sublw	#'a'
 	btfsc	STATUS,Z  ; 0x1, imprimir caracter
@@ -326,6 +330,9 @@ prcTrama:
 	movfw	drx
 	sublw	#'c'
 	goto	camLin
+	movfw	drx
+	sublw	#'d'
+	goto	impd
 	goto	fprc
 impc:
 	movlw	drx
@@ -336,11 +343,11 @@ impc:
 	call	visu
 	incf	cntc,f
 	movfw	cntc
-	sublw	0xf
+	sublw	0x10
 	btfsc	STATUS, Z
 	call	segLin
 	movfw	cntc
-	sublw	0x1f
+	sublw	0x20
 	btfsc	STATUS, Z
 	call	priLin
 	goto	fprc
@@ -357,10 +364,30 @@ camLin:
 cam1:
 	call	priLin
 	goto	fprc
-	
+impd:
+	movlw	drx
+	addlw	0x1
+	movwf	FSR
+	movlw	high T_nums
+	movwf	PCLATH
+	movfw	INDF
+	call	T_nums
+	movwf	verr
+	call	visu
+	incf	cntc,f
+	movfw	cntc
+	sublw	0x10
+	btfsc	STATUS, Z
+	call	segLin
+	movfw	cntc
+	sublw	0x1f
+	btfsc	STATUS, Z
+	call	priLin
+	goto	fprc
 borr:
 	call	borrar_lcd
 fprc:
+	bcf		PORTB, bussy
 	return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -430,6 +457,7 @@ T_nums
 	retlw #'7'
 	retlw #'8'
 	retlw #'9'
+	retlw #'.'
 
 
 
