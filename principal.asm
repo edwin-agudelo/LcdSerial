@@ -8,14 +8,27 @@
 ; 2014
 ;
 ;===============================================
+	
+;===============================================
+; Revisiones
+;
+; 2018-07-xx: Se ajustan los caracteres de envio
+;	      junto con la funcionalidad de re-
+;	      cibir una serie de caracteres(32)
+; 2019-07-XX: Se agrega la funcionalidad de re-
+;             cibir solo 2 caracteres, una ban-
+;	      dera y un caracter
+; 2019-07-XX: Se aumenta el tiempo de retardo en
+;	      el inicio para evitar que haya una
+;	      pantalla bloqueada al iniciar.
+;===============================================
 
-	;list p="16f628A"
-	include "P16f628A.inc"
+	include "p16f628a.inc"
 
 ; Estos son los define que necesito
-statt   equ 0x20
-wregt   equ 0x21
-dreg	equ	0x22 	; registro para los retrasos
+statt   equ	0x20
+wregt   equ	0x21
+delayr	equ	0x22 	; registro para los retrasos
 dxreg	equ	0x23	; registro para retrasos largos
 vreg	equ	0x24	; registro para cargar los valores a visualizar
 verr	equ	0x25	; registro para almacenar el caracter a mostrar
@@ -25,26 +38,27 @@ cntrx	equ	0x28	; registro contador de bytes de llegada
 band	equ	0x29	; registro de banderas
 treg	equ	0x2a	; registro para transmitir valor
 cntc	equ	0x2b	; registro contador de caracteres
-drx		equ	0x30	; inicio de los registros que se reciben
+drx	equ	0x30	; inicio de los registros que se reciben
+delmsr	equ	0x31	; registro para retardos de a 1MS(1 en este registro equivale a 1MS de retardo)
 
 ; Flags y valores de pines
-ena		equ 0x7		; LCD Enable
-rs		equ	0x4		; LCD Register Select
-rw		equ	0x6		; LCD Read/Write
+ena	equ	0x7		; LCD Enable
+rs	equ	0x4		; LCD Register Select
+rw	equ	0x6		; LCD Read/Write
 bcklg	equ	0x3		; LCD Backlight
-bussy	equ	0x4		; ocupado
-echo	equ	0x0		; eco de RX
-prcrx	equ	0x1		; procesar RX
+bussy	equ	0x4		; Ocupado
+echo	equ	0x0		; Eco de RX
+prcrx	equ	0x1		; Procesar RX
 lact	equ	0x2		; Linea en la que esta (0/1:Arriba/Abajo)
 
-	; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
-	__CONFIG _INTOSC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_OFF & _BODEN_OFF & _LVP_OFF & _CP_OFF & _MCLRE_ON
+    ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
+    __CONFIG _INTOSC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_OFF & _BODEN_OFF & _LVP_OFF & _CP_OFF & _MCLRE_ON
 
-	org     0x0000            ; processor reset vector
+    org     0x0000            ; processor reset vector
     GOTO    START                   ; go to beginning of program
 
 ; TODO ADD INTERRUPTS HERE IF USED
-    org     0x04
+    org		0x04
     bcf		INTCON,GIE
     movwf	wregt
     movfw	STATUS
@@ -68,72 +82,53 @@ START:
 	clrf	PORTB
 	movlw	0x07
 	movwf	CMCON
-	bsf		STATUS, RP0
-	bcf		STATUS, RP1
+	bsf	STATUS, RP0
+	bcf	STATUS, RP1
 	clrf	TRISA
 	movlw	0xE3
 	movwf	TRISB
 	movlw	0x19 ; 25 dec
 	movwf	SPBRG
-	bcf		STATUS, RP0
+	bcf	STATUS, RP0
 	movlw	0x90
 	movwf	RCSTA
-	bsf		STATUS, RP0
+	bsf	STATUS, RP0
 	movlw	0x24
 	movwf	TXSTA
 	movlw	0x20
 	movwf	PIE1
 	movlw	0x30
 	movwf	INTCON
-	bcf		STATUS, RP0
+	bcf	STATUS, RP0
 	
 	; Inicializo variables
 	clrf	cntrx
 	clrf	cntc
 	
-	
 	; Alisto la LCD para escribir
-	bsf		PORTA, rs
-	bsf		PORTA, rw
-	bsf		PORTA, ena
-	; Primer retardo: 15ms
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
+	bsf	PORTA, rs
+	bsf	PORTA, rw
+	bcf	PORTA, ena
+	; Primer retardo: 32ms
+	movlw	0x20
+	movwf	delmsr
+	call	DelMS
 	clrf	PORTA
 	movlw	0x3
 	iorwf	PORTA,f
-	bsf		PORTA,ena
-	bcf		PORTA,ena
-	; Segundo retraso: 4,1ms
-	movlw	0xfa
-	movwf	dreg
-	call	Delay
-	movlw	0xa0
-	movwf	dreg
-	call	Delay
+	bsf	PORTA,ena
+	bcf	PORTA,ena
+	; Segundo retraso: 5ms
+	movlw	0x05
+	movwf	delmsr
+	call	DelMS
 	movlw	0x3
 	iorwf	PORTA,f
-	bsf		PORTA,ena
-	bcf		PORTA,ena
+	bsf	PORTA,ena
+	bcf	PORTA,ena
 	; Tercer retraso: 0,1ms
-	movlw	0xa
-	movwf	dreg
+	movlw	0xb
+	movwf	delayr
 	call	Delay
 	; Secuencia Inicializadora
 	movlw	0x3
@@ -156,31 +151,31 @@ START:
 	clrf	vreg
 	call	lcd_w
 	movlw	0xa4
-	movwf	dreg
+	movwf	delayr
 	call	Delay
 	movlw	0x1
 	movwf	vreg
 	call 	lcd_w
 	movlw	0xa4
-	movwf	dreg
+	movwf	delayr
 	call	Delay
 	clrf	vreg
 	call	lcd_w
 	movlw	0x6
 	movwf	vreg
 	call	lcd_w
-	bsf		INTCON,PEIE
-	bsf		INTCON,GIE
+	bsf	INTCON,PEIE
+	bsf	INTCON,GIE
 	; Espero que este listo el LCD
 	
-	bsf		PORTA,rs
+	bsf	PORTA,rs
 	clrf	cont
 	clrf	band
-	bsf		PORTB, bcklg
-	bsf		PORTB, bussy
+	bsf	PORTB, bcklg
+	bsf	PORTB, bussy
 ciclo:
 	movfw	cont
-	sublw	0x9
+	sublw	0x8
 	btfsc	STATUS,Z
 	goto	ms2
 	;goto	acabo
@@ -194,11 +189,6 @@ ciclo:
 	incf	cont,f
 	goto	ciclo
 ms2:
-	;bcf		PORTA, rs
-	;movlw	0xC0
-	;movwf	verr
-	;call 	visu
-	;bsf		PORTA, rs
 	call	segLin
 	clrf	cont
 ciclo2:
@@ -215,7 +205,6 @@ ciclo2:
 	incf	cntc,f
 	incf	cont,f
 	goto	ciclo2
-	
 	
 acabo:
 	btfsc	band, prcrx
@@ -239,8 +228,16 @@ Delay:
 	nop
 	nop
 	nop
-	decfsz	dreg,F
+	decfsz	delayr,F
 	goto 	Delay
+	return
+	
+DelMS:
+	movlw	0x64
+	movwf	delayr
+	call	Delay
+	decfsz	delmsr
+	goto	DelMS
 	return
 	
 lcd_w:
@@ -248,10 +245,10 @@ lcd_w:
 	andlw	0xf0
 	iorwf	vreg,W
 	movwf	PORTA
-	bsf		PORTA,ena
-	bcf		PORTA,ena
+	bsf	PORTA,ena
+	bcf	PORTA,ena
 	movlw	0x4
-	movwf	dreg
+	movwf	delayr
 	call	Delay
 	return
 	
@@ -268,57 +265,57 @@ visu:
 	return
 	
 priLin:
-	bcf		band, lact
+	bcf	band, lact
 	clrf	cntc
-	bcf		PORTA, rs
+	bcf	PORTA, rs
 	movlw	0x80
 	movwf	verr
 	call 	visu
-	bsf		PORTA, rs
+	bsf	PORTA, rs
 	return
 	
 segLin:
-	bcf		band, lact
-	bcf		PORTA, rs
+	bcf	band, lact
+	bcf	PORTA, rs
 	movlw	0xC0
 	movwf	verr
 	call 	visu
-	bsf		PORTA, rs
+	bsf	PORTA, rs
 	movlw	0x11
 	movwf	cntc
 	return
 
 	
 borrar_lcd:
-	bcf		PORTA, rs
+	bcf	PORTA, rs
 	clrf	vreg
 	call	lcd_w
 	movlw	0xa4
-	movwf	dreg
+	movwf	delayr
 	call	Delay
 	movlw	0x1
 	movwf	vreg
 	call	lcd_w
 	movlw	0xa4
-	movwf	dreg
+	movwf	delayr
 	call	Delay
-	bsf		PORTA, rs
+	bsf	PORTA, rs
 	clrf	cntc
 	return
 	
 stx:
 	movfw	treg
 	movwf	TXREG
-	bsf		STATUS, RP0
+	bsf	STATUS, RP0
 buecho:
 	btfss	TXSTA, TRMT
 	goto	buecho
-	bcf		STATUS, RP0
+	bcf	STATUS, RP0
 	return
 	
 prcTrama:
-	bcf		band, prcrx
-	bsf		PORTB, bussy
+	bcf	band, prcrx
+	bsf	PORTB, bussy
 	movfw	drx
 	sublw	#'a'
 	btfsc	STATUS,Z  ; 0x1, imprimir caracter
@@ -387,7 +384,7 @@ impd:
 borr:
 	call	borrar_lcd
 fprc:
-	bcf		PORTB, bussy
+	bcf	PORTB, bussy
 	return
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -397,7 +394,7 @@ fprc:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Irq:
-	bcf		INTCON, INTF
+	bcf	INTCON, INTF
 	call	borrar_lcd
 	goto	IntOk
 
@@ -415,16 +412,16 @@ IRx:
 	btfss	STATUS,Z
 	goto	fIRx
 	clrf	cntrx
-	bsf		band,prcrx	
+	bsf	band,prcrx	
 fIRx:
-	bsf		band,echo
+	bsf	band,echo
 	goto	IntOk
 	
 IntOk:
-    movfw	statt
+	movfw	statt
 	movwf	STATUS
 	movfw	wregt
-	bsf		INTCON,GIE
+	bsf	INTCON,GIE
 	retfie
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -435,15 +432,14 @@ IntOk:
  	
 T_msg:
 	addwf PCL,f
-	retlw #'E'
-	retlw #' '
+	retlw #'>'
 	retlw #'L'
+	retlw #'C'
+	retlw #'D'
 	retlw #' '
-	retlw #'P'
-	retlw #' '
-	retlw #'J'
-	retlw #' '
-	retlw #'E'
+	retlw #'O'
+	retlw #'K'
+	retlw #'<'
 	
 T_nums
 	addwf PCL,f

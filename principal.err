@@ -1,0 +1,6 @@
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 73 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 75 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 77 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 83 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 85 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\PIC\PROYECTOS\LCDSERIAL\PRINCIPAL.ASM 314 : Register in operand not in bank 0.  Ensure that bank bits are correct.

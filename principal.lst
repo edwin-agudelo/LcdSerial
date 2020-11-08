@@ -1,0 +1,851 @@
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;===============================================
+                      00002 ;
+                      00003 ; Programa para la visualizacion de mensajes 
+                      00004 ; en una LCD de 16x2, mediante comunicacion
+                      00005 ; serial
+                      00006 ; Ing. Edwin A. Agudelo G.
+                      00007 ; SBI
+                      00008 ; 2014
+                      00009 ;
+                      00010 ;===============================================
+                      00011 
+                      00012         ;list p="16f628A"
+                      00013         include "P16f628A.inc"
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ;  MPASM PIC16F628A processor include
+                      00005 ; 
+                      00006 ;  (c) Copyright 1999-2010 Microchip Technology, All rights reserved
+                      00007 ;==========================================================================
+                      00008 
+                      00369         LIST
+                      00014 
+                      00015 ; Estos son los define que necesito
+  00000020            00016 statt   equ 0x20
+  00000021            00017 wregt   equ 0x21
+  00000022            00018 dreg    equ     0x22    ; registro para los retrasos
+  00000023            00019 dxreg   equ     0x23    ; registro para retrasos largos
+  00000024            00020 vreg    equ     0x24    ; registro para cargar los valores a visualizar
+  00000025            00021 verr    equ     0x25    ; registro para almacenar el caracter a mostrar
+  00000026            00022 temp    equ     0x26    ; registro para almacenar temporales
+  00000027            00023 cont    equ     0x27    ; registro contador
+  00000028            00024 cntrx   equ     0x28    ; registro contador de bytes de llegada
+  00000029            00025 band    equ     0x29    ; registro de banderas
+  0000002A            00026 treg    equ     0x2a    ; registro para transmitir valor
+  0000002B            00027 cntc    equ     0x2b    ; registro contador de caracteres
+  00000030            00028 drx             equ     0x30    ; inicio de los registros que se reciben
+                      00029 
+                      00030 ; Flags y valores de pines
+  00000007            00031 ena             equ 0x7         ; LCD Enable
+  00000004            00032 rs              equ     0x4             ; LCD Register Select
+  00000006            00033 rw              equ     0x6             ; LCD Read/Write
+  00000003            00034 bcklg   equ     0x3             ; LCD Backlight
+  00000004            00035 bussy   equ     0x4             ; ocupado
+  00000000            00036 echo    equ     0x0             ; eco de RX
+  00000001            00037 prcrx   equ     0x1             ; procesar RX
+  00000002            00038 lact    equ     0x2             ; Linea en la que esta (0/1:Arriba/Abajo)
+                      00039 
+                      00040         ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
+2007   3F38           00041         __CONFIG _INTOSC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_OFF & _BODEN_OFF & _LVP_OFF & _CP_OFF & _MCLRE
+                            _ON
+                      00042 
+0000                  00043         org     0x0000            ; processor reset vector
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0000   280F           00044     GOTO    START                   ; go to beginning of program
+                      00045 
+                      00046 ; TODO ADD INTERRUPTS HERE IF USED
+0004                  00047     org     0x04
+0004   138B           00048     bcf         INTCON,GIE
+0005   00A1           00049     movwf       wregt
+0006   0803           00050     movfw       STATUS
+0007   00A0           00051     movwf       statt
+0008   1303           00052     bcf         STATUS,RP1
+0009   1283           00053     bcf         STATUS,RP0
+000A   188B           00054     btfsc       INTCON, INTF
+000B   291E           00055     goto        Irq
+000C   1A8C           00056     btfsc       PIR1, RCIF
+000D   2921           00057     goto        IRx
+000E   2931           00058     goto        IntOk
+                      00059 
+                      00060 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00061 ;
+                      00062 ; Programa principal
+                      00063 ;
+                      00064 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00065 
+000F                  00066 START:
+000F   0185           00067         clrf    PORTA
+0010   0186           00068         clrf    PORTB
+0011   3007           00069         movlw   0x07
+0012   009F           00070         movwf   CMCON
+0013   1683           00071         bsf             STATUS, RP0
+0014   1303           00072         bcf             STATUS, RP1
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0015   0185           00073         clrf    TRISA
+0016   30E3           00074         movlw   0xE3
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0017   0086           00075         movwf   TRISB
+0018   3019           00076         movlw   0x19 ; 25 dec
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0019   0099           00077         movwf   SPBRG
+001A   1283           00078         bcf             STATUS, RP0
+001B   3090           00079         movlw   0x90
+001C   0098           00080         movwf   RCSTA
+001D   1683           00081         bsf             STATUS, RP0
+001E   3024           00082         movlw   0x24
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+001F   0098           00083         movwf   TXSTA
+0020   3020           00084         movlw   0x20
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0021   008C           00085         movwf   PIE1
+0022   3030           00086         movlw   0x30
+0023   008B           00087         movwf   INTCON
+0024   1283           00088         bcf             STATUS, RP0
+                      00089         
+                      00090         ; Inicializo variables
+0025   01A8           00091         clrf    cntrx
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0026   01AB           00092         clrf    cntc
+                      00093         
+                      00094         
+                      00095         ; Alisto la LCD para escribir
+0027   1605           00096         bsf             PORTA, rs
+0028   1705           00097         bsf             PORTA, rw
+0029   1785           00098         bsf             PORTA, ena
+                      00099         ; Primer retardo: 15ms
+002A   30FA           00100         movlw   0xfa
+002B   00A2           00101         movwf   dreg
+002C   2095           00102         call    Delay
+002D   30FA           00103         movlw   0xfa
+002E   00A2           00104         movwf   dreg
+002F   2095           00105         call    Delay
+0030   30FA           00106         movlw   0xfa
+0031   00A2           00107         movwf   dreg
+0032   2095           00108         call    Delay
+0033   30FA           00109         movlw   0xfa
+0034   00A2           00110         movwf   dreg
+0035   2095           00111         call    Delay
+0036   30FA           00112         movlw   0xfa
+0037   00A2           00113         movwf   dreg
+0038   2095           00114         call    Delay
+0039   30FA           00115         movlw   0xfa
+003A   00A2           00116         movwf   dreg
+003B   2095           00117         call    Delay
+003C   0185           00118         clrf    PORTA
+003D   3003           00119         movlw   0x3
+003E   0485           00120         iorwf   PORTA,f
+003F   1785           00121         bsf             PORTA,ena
+0040   1385           00122         bcf             PORTA,ena
+                      00123         ; Segundo retraso: 4,1ms
+0041   30FA           00124         movlw   0xfa
+0042   00A2           00125         movwf   dreg
+0043   2095           00126         call    Delay
+0044   30A0           00127         movlw   0xa0
+0045   00A2           00128         movwf   dreg
+0046   2095           00129         call    Delay
+0047   3003           00130         movlw   0x3
+0048   0485           00131         iorwf   PORTA,f
+0049   1785           00132         bsf             PORTA,ena
+004A   1385           00133         bcf             PORTA,ena
+                      00134         ; Tercer retraso: 0,1ms
+004B   300A           00135         movlw   0xa
+004C   00A2           00136         movwf   dreg
+004D   2095           00137         call    Delay
+                      00138         ; Secuencia Inicializadora
+004E   3003           00139         movlw   0x3
+004F   00A4           00140         movwf   vreg
+0050   20A1           00141         call    lcd_w
+0051   3002           00142         movlw   0x2
+0052   00A4           00143         movwf   vreg
+0053   20A1           00144         call    lcd_w
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0054   3002           00145         movlw   0x2
+0055   00A4           00146         movwf   vreg
+0056   20A1           00147         call    lcd_w
+0057   3008           00148         movlw   0x8
+0058   00A4           00149         movwf   vreg
+0059   20A1           00150         call    lcd_w
+005A   01A4           00151         clrf    vreg
+005B   20A1           00152         call    lcd_w
+005C   300C           00153         movlw   0xc
+005D   00A4           00154         movwf   vreg
+005E   20A1           00155         call    lcd_w
+005F   01A4           00156         clrf    vreg
+0060   20A1           00157         call    lcd_w
+0061   30A4           00158         movlw   0xa4
+0062   00A2           00159         movwf   dreg
+0063   2095           00160         call    Delay
+0064   3001           00161         movlw   0x1
+0065   00A4           00162         movwf   vreg
+0066   20A1           00163         call    lcd_w
+0067   30A4           00164         movlw   0xa4
+0068   00A2           00165         movwf   dreg
+0069   2095           00166         call    Delay
+006A   01A4           00167         clrf    vreg
+006B   20A1           00168         call    lcd_w
+006C   3006           00169         movlw   0x6
+006D   00A4           00170         movwf   vreg
+006E   20A1           00171         call    lcd_w
+006F   170B           00172         bsf             INTCON,PEIE
+0070   178B           00173         bsf             INTCON,GIE
+                      00174         ; Espero que este listo el LCD
+                      00175         
+0071   1605           00176         bsf             PORTA,rs
+0072   01A7           00177         clrf    cont
+0073   01A9           00178         clrf    band
+0074   1586           00179         bsf             PORTB, bcklg
+0075   1606           00180         bsf             PORTB, bussy
+0076                  00181 ciclo:
+0076   0827           00182         movfw   cont
+0077   3C09           00183         sublw   0x9
+0078   1903           00184         btfsc   STATUS,Z
+0079   2883           00185         goto    ms2
+                      00186         ;goto   acabo
+007A   3001           00187         movlw   high T_msg
+007B   008A           00188         movwf   PCLATH
+007C   0827           00189         movfw   cont
+007D   2136           00190         call    T_msg
+007E   00A5           00191         movwf   verr
+007F   20AB           00192         call    visu
+0080   0AAB           00193         incf    cntc,f
+0081   0AA7           00194         incf    cont,f
+0082   2876           00195         goto    ciclo
+0083                  00196 ms2:
+                      00197         ;bcf            PORTA, rs
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00198         ;movlw  0xC0
+                      00199         ;movwf  verr
+                      00200         ;call   visu
+                      00201         ;bsf            PORTA, rs
+0083   20BD           00202         call    segLin
+0084   01A7           00203         clrf    cont
+0085                  00204 ciclo2:
+0085   0827           00205         movfw   cont
+0086   3C09           00206         sublw   0x9
+0087   1903           00207         btfsc   STATUS,Z
+0088   2892           00208         goto    acabo
+0089   3001           00209         movlw   high T_msg
+008A   008A           00210         movwf   PCLATH
+008B   0827           00211         movfw   cont
+008C   2136           00212         call    T_msg
+008D   00A5           00213         movwf   verr
+008E   20AB           00214         call    visu
+008F   0AAB           00215         incf    cntc,f
+0090   0AA7           00216         incf    cont,f
+0091   2885           00217         goto    ciclo2
+                      00218         
+                      00219         
+0092                  00220 acabo:
+0092   18A9           00221         btfsc   band, prcrx
+0093   20DC           00222         call    prcTrama
+0094   2892           00223         goto    acabo
+                      00224         
+                      00225 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00226 ;
+                      00227 ; Subrutinas
+                      00228 ;
+                      00229 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00230 
+                      00231 ; rutina de retraso de 10us 
+0095                  00232 Delay:
+0095   0000           00233         nop
+0096   0000           00234         nop
+0097   0000           00235         nop
+0098   0000           00236         nop
+0099   0000           00237         nop
+009A   0000           00238         nop
+009B   0000           00239         nop
+009C   0000           00240         nop
+009D   0000           00241         nop
+009E   0BA2           00242         decfsz  dreg,F
+009F   2895           00243         goto    Delay
+00A0   0008           00244         return
+                      00245         
+00A1                  00246 lcd_w:
+00A1   0805           00247         movfw   PORTA
+00A2   39F0           00248         andlw   0xf0
+00A3   0424           00249         iorwf   vreg,W
+00A4   0085           00250         movwf   PORTA
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00A5   1785           00251         bsf             PORTA,ena
+00A6   1385           00252         bcf             PORTA,ena
+00A7   3004           00253         movlw   0x4
+00A8   00A2           00254         movwf   dreg
+00A9   2095           00255         call    Delay
+00AA   0008           00256         return
+                      00257         
+00AB                  00258 visu:
+00AB   0825           00259         movfw   verr
+00AC   39F0           00260         andlw   0xf0
+00AD   00A4           00261         movwf   vreg
+00AE   0EA4           00262         swapf   vreg,f
+00AF   20A1           00263         call    lcd_w
+00B0   0825           00264         movfw   verr
+00B1   390F           00265         andlw   0x0f
+00B2   00A4           00266         movwf   vreg
+00B3   20A1           00267         call    lcd_w
+00B4   0008           00268         return
+                      00269         
+00B5                  00270 priLin:
+00B5   1129           00271         bcf             band, lact
+00B6   01AB           00272         clrf    cntc
+00B7   1205           00273         bcf             PORTA, rs
+00B8   3080           00274         movlw   0x80
+00B9   00A5           00275         movwf   verr
+00BA   20AB           00276         call    visu
+00BB   1605           00277         bsf             PORTA, rs
+00BC   0008           00278         return
+                      00279         
+00BD                  00280 segLin:
+00BD   1129           00281         bcf             band, lact
+00BE   1205           00282         bcf             PORTA, rs
+00BF   30C0           00283         movlw   0xC0
+00C0   00A5           00284         movwf   verr
+00C1   20AB           00285         call    visu
+00C2   1605           00286         bsf             PORTA, rs
+00C3   3011           00287         movlw   0x11
+00C4   00AB           00288         movwf   cntc
+00C5   0008           00289         return
+                      00290 
+                      00291         
+00C6                  00292 borrar_lcd:
+00C6   1205           00293         bcf             PORTA, rs
+00C7   01A4           00294         clrf    vreg
+00C8   20A1           00295         call    lcd_w
+00C9   30A4           00296         movlw   0xa4
+00CA   00A2           00297         movwf   dreg
+00CB   2095           00298         call    Delay
+00CC   3001           00299         movlw   0x1
+00CD   00A4           00300         movwf   vreg
+00CE   20A1           00301         call    lcd_w
+00CF   30A4           00302         movlw   0xa4
+00D0   00A2           00303         movwf   dreg
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00D1   2095           00304         call    Delay
+00D2   1605           00305         bsf             PORTA, rs
+00D3   01AB           00306         clrf    cntc
+00D4   0008           00307         return
+                      00308         
+00D5                  00309 stx:
+00D5   082A           00310         movfw   treg
+00D6   0099           00311         movwf   TXREG
+00D7   1683           00312         bsf             STATUS, RP0
+00D8                  00313 buecho:
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+00D8   1C98           00314         btfss   TXSTA, TRMT
+00D9   28D8           00315         goto    buecho
+00DA   1283           00316         bcf             STATUS, RP0
+00DB   0008           00317         return
+                      00318         
+00DC                  00319 prcTrama:
+00DC   10A9           00320         bcf             band, prcrx
+00DD   1606           00321         bsf             PORTB, bussy
+00DE   0830           00322         movfw   drx
+00DF   3C61           00323         sublw   #'a'
+00E0   1903           00324         btfsc   STATUS,Z  ; 0x1, imprimir caracter
+00E1   28ED           00325         goto    impc
+00E2   0830           00326         movfw   drx
+00E3   3C62           00327         sublw   #'b'
+00E4   1903           00328         btfsc   STATUS, Z ; 0x2, borrar pantalla
+00E5   291B           00329         goto    borr
+00E6   0830           00330         movfw   drx
+00E7   3C63           00331         sublw   #'c'
+00E8   28FD           00332         goto    camLin
+00E9   0830           00333         movfw   drx
+00EA   3C64           00334         sublw   #'d'
+00EB   2908           00335         goto    impd
+00EC   291C           00336         goto    fprc
+00ED                  00337 impc:
+00ED   3030           00338         movlw   drx
+00EE   3E01           00339         addlw   0x1
+00EF   0084           00340         movwf   FSR
+00F0   0800           00341         movfw   INDF
+00F1   00A5           00342         movwf   verr
+00F2   20AB           00343         call    visu
+00F3   0AAB           00344         incf    cntc,f
+00F4   082B           00345         movfw   cntc
+00F5   3C10           00346         sublw   0x10
+00F6   1903           00347         btfsc   STATUS, Z
+00F7   20BD           00348         call    segLin
+00F8   082B           00349         movfw   cntc
+00F9   3C20           00350         sublw   0x20
+00FA   1903           00351         btfsc   STATUS, Z
+00FB   20B5           00352         call    priLin
+00FC   291C           00353         goto    fprc
+00FD                  00354 camLin:
+00FD   3030           00355         movlw   drx
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  8
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00FE   3E01           00356         addlw   0x1
+00FF   0084           00357         movwf   FSR
+0100   0800           00358         movfw   INDF
+0101   3C01           00359         sublw   0x1
+0102   1D03           00360         btfss   STATUS, Z
+0103   2906           00361         goto    cam1
+0104   20BD           00362         call    segLin
+0105   291C           00363         goto    fprc
+0106                  00364 cam1:
+0106   20B5           00365         call    priLin
+0107   291C           00366         goto    fprc
+0108                  00367 impd:
+0108   3030           00368         movlw   drx
+0109   3E01           00369         addlw   0x1
+010A   0084           00370         movwf   FSR
+010B   3001           00371         movlw   high T_nums
+010C   008A           00372         movwf   PCLATH
+010D   0800           00373         movfw   INDF
+010E   2140           00374         call    T_nums
+010F   00A5           00375         movwf   verr
+0110   20AB           00376         call    visu
+0111   0AAB           00377         incf    cntc,f
+0112   082B           00378         movfw   cntc
+0113   3C10           00379         sublw   0x10
+0114   1903           00380         btfsc   STATUS, Z
+0115   20BD           00381         call    segLin
+0116   082B           00382         movfw   cntc
+0117   3C1F           00383         sublw   0x1f
+0118   1903           00384         btfsc   STATUS, Z
+0119   20B5           00385         call    priLin
+011A   291C           00386         goto    fprc
+011B                  00387 borr:
+011B   20C6           00388         call    borrar_lcd
+011C                  00389 fprc:
+011C   1206           00390         bcf             PORTB, bussy
+011D   0008           00391         return
+                      00392 
+                      00393 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00394 ;
+                      00395 ; Interrupciones
+                      00396 ;
+                      00397 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00398 
+011E                  00399 Irq:
+011E   108B           00400         bcf             INTCON, INTF
+011F   20C6           00401         call    borrar_lcd
+0120   2931           00402         goto    IntOk
+                      00403 
+0121                  00404 IRx:
+0121   081A           00405         movfw   RCREG
+0122   00A6           00406         movwf   temp
+0123   0828           00407         movfw   cntrx
+0124   3E30           00408         addlw   drx
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE  9
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0125   0084           00409         movwf   FSR
+0126   0826           00410         movfw   temp
+0127   0080           00411         movwf   INDF
+0128   0AA8           00412         incf    cntrx,f
+0129   0828           00413         movfw   cntrx
+012A   3C03           00414         sublw   0x3
+012B   1D03           00415         btfss   STATUS,Z
+012C   292F           00416         goto    fIRx
+012D   01A8           00417         clrf    cntrx
+012E   14A9           00418         bsf             band,prcrx      
+012F                  00419 fIRx:
+012F   1429           00420         bsf             band,echo
+0130   2931           00421         goto    IntOk
+                      00422         
+0131                  00423 IntOk:
+0131   0820           00424     movfw       statt
+0132   0083           00425         movwf   STATUS
+0133   0821           00426         movfw   wregt
+0134   178B           00427         bsf             INTCON,GIE
+0135   0009           00428         retfie
+                      00429 
+                      00430 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00431 ;
+                      00432 ; Tablas
+                      00433 ;
+                      00434 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00435         
+0136                  00436 T_msg:
+0136   0782           00437         addwf PCL,f
+0137   3445           00438         retlw #'E'
+0138   3420           00439         retlw #' '
+0139   344C           00440         retlw #'L'
+013A   3420           00441         retlw #' '
+013B   3450           00442         retlw #'P'
+013C   3420           00443         retlw #' '
+013D   344A           00444         retlw #'J'
+013E   3420           00445         retlw #' '
+013F   3445           00446         retlw #'E'
+                      00447         
+0140                  00448 T_nums
+0140   0782           00449         addwf PCL,f
+0141   3430           00450         retlw #'0'
+0142   3431           00451         retlw #'1'
+0143   3432           00452         retlw #'2'
+0144   3433           00453         retlw #'3'
+0145   3434           00454         retlw #'4'
+0146   3435           00455         retlw #'5'
+0147   3436           00456         retlw #'6'
+0148   3437           00457         retlw #'7'
+0149   3438           00458         retlw #'8'
+014A   3439           00459         retlw #'9'
+014B   342E           00460         retlw #'.'
+                      00461 
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 10
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00462 
+                      00463 
+                      00464         end
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ADDEN                             00000003
+ADEN                              00000003
+BRGH                              00000002
+C                                 00000000
+C1INV                             00000004
+C1OUT                             00000006
+C2INV                             00000005
+C2OUT                             00000007
+CCP1CON                           00000017
+CCP1IE                            00000002
+CCP1IF                            00000002
+CCP1M0                            00000000
+CCP1M1                            00000001
+CCP1M2                            00000002
+CCP1M3                            00000003
+CCP1X                             00000005
+CCP1Y                             00000004
+CCPR1                             00000015
+CCPR1H                            00000016
+CCPR1L                            00000015
+CIS                               00000003
+CM0                               00000000
+CM1                               00000001
+CM2                               00000002
+CMCON                             0000001F
+CMIE                              00000006
+CMIF                              00000006
+CREN                              00000004
+CSRC                              00000007
+DATA_CP_OFF                       00003FFF
+DATA_CP_ON                        00003EFF
+DC                                00000001
+Delay                             00000095
+EEADR                             0000009B
+EECON1                            0000009C
+EECON2                            0000009D
+EEDATA                            0000009A
+EEIE                              00000007
+EEIF                              00000007
+F                                 00000001
+FERR                              00000002
+FSR                               00000004
+GIE                               00000007
+INDF                              00000000
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+IRP                               00000007
+IRx                               00000121
+IntOk                             00000131
+Irq                               0000011E
+NOT_BO                            00000000
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 12
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+NOT_BOD                           00000000
+NOT_BOR                           00000000
+NOT_PD                            00000003
+NOT_POR                           00000001
+NOT_RBPU                          00000007
+NOT_T1SYNC                        00000002
+NOT_TO                            00000004
+OERR                              00000001
+OPTION_REG                        00000081
+OSCF                              00000003
+PCL                               00000002
+PCLATH                            0000000A
+PCON                              0000008E
+PEIE                              00000006
+PIE1                              0000008C
+PIR1                              0000000C
+PORTA                             00000005
+PORTB                             00000006
+PR2                               00000092
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+RA0                               00000000
+RA1                               00000001
+RA2                               00000002
+RA3                               00000003
+RA4                               00000004
+RA5                               00000005
+RA6                               00000006
+RA7                               00000007
+RB0                               00000000
+RB1                               00000001
+RB2                               00000002
+RB3                               00000003
+RB4                               00000004
+RB5                               00000005
+RB6                               00000006
+RB7                               00000007
+RBIE                              00000003
+RBIF                              00000000
+RCIE                              00000005
+RCIF                              00000005
+RCREG                             0000001A
+RCSTA                             00000018
+RD                                00000000
+RP0                               00000005
+RP1                               00000006
+RX9                               00000006
+RX9D                              00000000
+SPBRG                             00000099
+SPEN                              00000007
+SREN                              00000005
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 13
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+START                             0000000F
+STATUS                            00000003
+SYNC                              00000004
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+T1CKPS0                           00000004
+T1CKPS1                           00000005
+T1CON                             00000010
+T1OSCEN                           00000003
+T2CKPS0                           00000000
+T2CKPS1                           00000001
+T2CON                             00000012
+TMR0                              00000001
+TMR0IE                            00000005
+TMR0IF                            00000002
+TMR1CS                            00000001
+TMR1H                             0000000F
+TMR1IE                            00000000
+TMR1IF                            00000000
+TMR1L                             0000000E
+TMR1ON                            00000000
+TMR2                              00000011
+TMR2IE                            00000001
+TMR2IF                            00000001
+TMR2ON                            00000002
+TOUTPS0                           00000003
+TOUTPS1                           00000004
+TOUTPS2                           00000005
+TOUTPS3                           00000006
+TRISA                             00000085
+TRISA0                            00000000
+TRISA1                            00000001
+TRISA2                            00000002
+TRISA3                            00000003
+TRISA4                            00000004
+TRISA5                            00000005
+TRISA6                            00000006
+TRISA7                            00000007
+TRISB                             00000086
+TRISB0                            00000000
+TRISB1                            00000001
+TRISB2                            00000002
+TRISB3                            00000003
+TRISB4                            00000004
+TRISB5                            00000005
+TRISB6                            00000006
+TRISB7                            00000007
+TRMT                              00000001
+TX9                               00000006
+TX9D                              00000000
+TXEN                              00000005
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 14
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+TXIE                              00000004
+TXIF                              00000004
+TXREG                             00000019
+TXSTA                             00000098
+T_msg                             00000136
+T_nums                            00000140
+VR0                               00000000
+VR1                               00000001
+VR2                               00000002
+VR3                               00000003
+VRCON                             0000009F
+VREN                              00000007
+VROE                              00000006
+VRR                               00000005
+W                                 00000000
+WR                                00000001
+WREN                              00000002
+WRERR                             00000003
+Z                                 00000002
+_BODEN_OFF                        00003FBF
+_BODEN_ON                         00003FFF
+_BOREN_OFF                        00003FBF
+_BOREN_ON                         00003FFF
+_CONFIG                           00002007
+_CP_OFF                           00003FFF
+_CP_ON                            00001FFF
+_DEVID1                           00002006
+_ER_OSC_CLKOUT                    00003FFF
+_ER_OSC_NOCLKOUT                  00003FFE
+_EXTCLK_OSC                       00003FEF
+_HS_OSC                           00003FEE
+_IDLOC0                           00002000
+_IDLOC1                           00002001
+_IDLOC2                           00002002
+_IDLOC3                           00002003
+_INTOSC_OSC_CLKOUT                00003FFD
+_INTOSC_OSC_NOCLKOUT              00003FFC
+_INTRC_OSC_CLKOUT                 00003FFD
+_INTRC_OSC_NOCLKOUT               00003FFC
+_LP_OSC                           00003FEC
+_LVP_OFF                          00003F7F
+_LVP_ON                           00003FFF
+_MCLRE_OFF                        00003FDF
+_MCLRE_ON                         00003FFF
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FF7
+_RC_OSC_CLKOUT                    00003FFF
+_RC_OSC_NOCLKOUT                  00003FFE
+_WDT_OFF                          00003FFB
+_WDT_ON                           00003FFF
+_XT_OSC                           00003FED
+__16F628A                         00000001
+__DEBUG                           1
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 15
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+acabo                             00000092
+band                              00000029
+bcklg                             00000003
+borr                              0000011B
+borrar_lcd                        000000C6
+buecho                            000000D8
+bussy                             00000004
+cam1                              00000106
+camLin                            000000FD
+ciclo                             00000076
+ciclo2                            00000085
+cntc                              0000002B
+cntrx                             00000028
+cont                              00000027
+dreg                              00000022
+drx                               00000030
+dxreg                             00000023
+echo                              00000000
+ena                               00000007
+fIRx                              0000012F
+fprc                              0000011C
+impc                              000000ED
+impd                              00000108
+lact                              00000002
+lcd_w                             000000A1
+ms2                               00000083
+prcTrama                          000000DC
+prcrx                             00000001
+priLin                            000000B5
+rs                                00000004
+rw                                00000006
+segLin                            000000BD
+statt                             00000020
+stx                               000000D5
+temp                              00000026
+treg                              0000002A
+verr                              00000025
+visu                              000000AB
+vreg                              00000024
+wregt                             00000021
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : X---XXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+MPASM  5.39                     PRINCIPAL.ASM   12-29-2014  21:53:34         PAGE 16
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+
+0080 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+00C0 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0100 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0140 : XXXXXXXXXXXX---- ---------------- ---------------- ----------------
+2000 : -------X-------- ---------------- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:   329
+Program Memory Words Free:  1719
+
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     6 reported,     0 suppressed
+
+

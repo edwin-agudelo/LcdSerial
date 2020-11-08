@@ -1,0 +1,82 @@
+MPLINK 4.38, Linker
+Linker Map File - Created Mon Dec 22 22:13:42 2014
+
+                                 Section Info
+                  Section       Type    Address   Location Size(Bytes)
+                ---------  ---------  ---------  ---------  ---------
+                   .org_0       code   0x000000    program   0x000000
+                   .org_1       code   0x000000    program   0x000002
+                   .org_2       code   0x000004    program   0x000244
+ .config_2007_PRINCIPAL.O       code   0x002007    program   0x000002
+
+
+
+                              Program Memory Usage 
+                               Start         End      
+                           ---------   ---------      
+                            0x000000    0x000000      
+                            0x000004    0x000125      
+                            0x002007    0x002007      
+            292 out of 2182 program addresses used, program memory utilization is 13%
+
+
+
+                              Symbols - Sorted by Name
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                    Delay   0x000093    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      IRx   0x000107    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    IntOk   0x000117    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      Irq   0x000104    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    START   0x00000f    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    T_msg   0x00011c    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    acabo   0x000090    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     borr   0x000102    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+               borrar_lcd   0x0000c4    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   buecho   0x0000d6    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     cam1   0x000100    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   camLin   0x0000f7    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    ciclo   0x000074    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   ciclo2   0x000083    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     fIRx   0x000115    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     fprc   0x000103    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     impc   0x0000e7    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    lcd_w   0x00009f    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      ms2   0x000081    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                 prcTrama   0x0000da    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   priLin   0x0000b3    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   segLin   0x0000bb    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      stx   0x0000d3    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     visu   0x0000a9    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+
+
+
+                              Symbols - Sorted by Address
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                    START   0x00000f    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    ciclo   0x000074    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      ms2   0x000081    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   ciclo2   0x000083    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    acabo   0x000090    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    Delay   0x000093    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    lcd_w   0x00009f    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     visu   0x0000a9    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   priLin   0x0000b3    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   segLin   0x0000bb    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+               borrar_lcd   0x0000c4    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      stx   0x0000d3    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   buecho   0x0000d6    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                 prcTrama   0x0000da    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     impc   0x0000e7    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                   camLin   0x0000f7    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     cam1   0x000100    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     borr   0x000102    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     fprc   0x000103    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      Irq   0x000104    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                      IRx   0x000107    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                     fIRx   0x000115    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    IntOk   0x000117    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+                    T_msg   0x00011c    program     static C:\pic\Proyectos\LcdSerial\principal.asm
+
+

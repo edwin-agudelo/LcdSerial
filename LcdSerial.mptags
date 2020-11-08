@@ -1,0 +1,55 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.5.4	//
+!_TAG_REVISION_NAME	MCHPTags	//
+!_TAG_REVISION_VERSION	6.0.1	//
+Delay	C:\pic\Proyectos\LcdSerial\principal.asm	232;"	l	line:232
+IRx	C:\pic\Proyectos\LcdSerial\principal.asm	404;"	l	line:404
+IntOk	C:\pic\Proyectos\LcdSerial\principal.asm	423;"	l	line:423
+Irq	C:\pic\Proyectos\LcdSerial\principal.asm	399;"	l	line:399
+START	C:\pic\Proyectos\LcdSerial\principal.asm	66;"	l	line:66
+T_msg	C:\pic\Proyectos\LcdSerial\principal.asm	436;"	l	line:436
+T_nums	C:\pic\Proyectos\LcdSerial\principal.asm	448;"	l	line:448
+acabo	C:\pic\Proyectos\LcdSerial\principal.asm	220;"	l	line:220
+band	C:\pic\Proyectos\LcdSerial\principal.asm	25;"	q	line:25
+bcklg	C:\pic\Proyectos\LcdSerial\principal.asm	34;"	q	line:34
+borr	C:\pic\Proyectos\LcdSerial\principal.asm	387;"	l	line:387
+borrar_lcd	C:\pic\Proyectos\LcdSerial\principal.asm	292;"	l	line:292
+buecho	C:\pic\Proyectos\LcdSerial\principal.asm	313;"	l	line:313
+bussy	C:\pic\Proyectos\LcdSerial\principal.asm	35;"	q	line:35
+cam1	C:\pic\Proyectos\LcdSerial\principal.asm	364;"	l	line:364
+camLin	C:\pic\Proyectos\LcdSerial\principal.asm	354;"	l	line:354
+ciclo	C:\pic\Proyectos\LcdSerial\principal.asm	181;"	l	line:181
+ciclo2	C:\pic\Proyectos\LcdSerial\principal.asm	204;"	l	line:204
+cntc	C:\pic\Proyectos\LcdSerial\principal.asm	27;"	q	line:27
+cntrx	C:\pic\Proyectos\LcdSerial\principal.asm	24;"	q	line:24
+cont	C:\pic\Proyectos\LcdSerial\principal.asm	23;"	q	line:23
+dreg	C:\pic\Proyectos\LcdSerial\principal.asm	18;"	q	line:18
+drx	C:\pic\Proyectos\LcdSerial\principal.asm	28;"	q	line:28
+dxreg	C:\pic\Proyectos\LcdSerial\principal.asm	19;"	q	line:19
+echo	C:\pic\Proyectos\LcdSerial\principal.asm	36;"	q	line:36
+ena	C:\pic\Proyectos\LcdSerial\principal.asm	31;"	q	line:31
+fIRx	C:\pic\Proyectos\LcdSerial\principal.asm	419;"	l	line:419
+fprc	C:\pic\Proyectos\LcdSerial\principal.asm	389;"	l	line:389
+impc	C:\pic\Proyectos\LcdSerial\principal.asm	337;"	l	line:337
+impd	C:\pic\Proyectos\LcdSerial\principal.asm	367;"	l	line:367
+lact	C:\pic\Proyectos\LcdSerial\principal.asm	38;"	q	line:38
+lcd_w	C:\pic\Proyectos\LcdSerial\principal.asm	246;"	l	line:246
+ms2	C:\pic\Proyectos\LcdSerial\principal.asm	196;"	l	line:196
+prcTrama	C:\pic\Proyectos\LcdSerial\principal.asm	319;"	l	line:319
+prcrx	C:\pic\Proyectos\LcdSerial\principal.asm	37;"	q	line:37
+priLin	C:\pic\Proyectos\LcdSerial\principal.asm	270;"	l	line:270
+rs	C:\pic\Proyectos\LcdSerial\principal.asm	32;"	q	line:32
+rw	C:\pic\Proyectos\LcdSerial\principal.asm	33;"	q	line:33
+segLin	C:\pic\Proyectos\LcdSerial\principal.asm	280;"	l	line:280
+statt	C:\pic\Proyectos\LcdSerial\principal.asm	16;"	q	line:16
+stx	C:\pic\Proyectos\LcdSerial\principal.asm	309;"	l	line:309
+temp	C:\pic\Proyectos\LcdSerial\principal.asm	22;"	q	line:22
+treg	C:\pic\Proyectos\LcdSerial\principal.asm	26;"	q	line:26
+verr	C:\pic\Proyectos\LcdSerial\principal.asm	21;"	q	line:21
+visu	C:\pic\Proyectos\LcdSerial\principal.asm	258;"	l	line:258
+vreg	C:\pic\Proyectos\LcdSerial\principal.asm	20;"	q	line:20
+wregt	C:\pic\Proyectos\LcdSerial\principal.asm	17;"	q	line:17
