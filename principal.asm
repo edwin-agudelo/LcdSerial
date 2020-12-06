@@ -21,6 +21,9 @@
 ; 2019-07-XX: Se aumenta el tiempo de retardo en
 ;	      el inicio para evitar que haya una
 ;	      pantalla bloqueada al iniciar.
+; 2020-12-04: Se ajusta la parte de los 2 carac-
+;	      teres, se ajusta el tiempo de 
+;	      timeout para la recepcion de datos.
 ;===============================================
 
 	include "p16f628a.inc"
@@ -38,8 +41,13 @@ cntrx	equ	0x28	; registro contador de bytes de llegada
 band	equ	0x29	; registro de banderas
 treg	equ	0x2a	; registro para transmitir valor
 cntc	equ	0x2b	; registro contador de caracteres
-drx	equ	0x30	; inicio de los registros que se reciben
-delmsr	equ	0x31	; registro para retardos de a 1MS(1 en este registro equivale a 1MS de retardo)
+delmsr	equ	0x2c	; registro para retardos de a 1MS(1 en este registro equivale a 1MS de retardo)
+entcnv	equ	0x2d	; registro para almacenar los datos a convertir
+const	equ	0x2e	; registro para almacenar la constante a restar en la conversion
+cmov	equ	0x2f	; registro para almacenar el actual desplazamiento
+fsrt	equ	0x30	; registro para almecenar el valor del registro FSR
+valcnv	equ	0x31	; registro inicial para almacenar el valor a convertir
+drx	equ	0x38	; inicio de los registros que se reciben
 
 ; Flags y valores de pines
 ena	equ	0x7		; LCD Enable
@@ -50,6 +58,7 @@ bussy	equ	0x4		; Ocupado
 echo	equ	0x0		; Eco de RX
 prcrx	equ	0x1		; Procesar RX
 lact	equ	0x2		; Linea en la que esta (0/1:Arriba/Abajo)
+recb	equ	0x3		; Flag para identificar el momento en que esta recibiendo
 
     ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
     __CONFIG _INTOSC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_OFF & _BODEN_OFF & _LVP_OFF & _CP_OFF & _MCLRE_ON
@@ -63,12 +72,16 @@ lact	equ	0x2		; Linea en la que esta (0/1:Arriba/Abajo)
     movwf	wregt
     movfw	STATUS
     movwf	statt
+    movfw	FSR
+    movwf	fsrt
     bcf		STATUS,RP1
     bcf		STATUS,RP0
     btfsc	INTCON, INTF
     goto	Irq
     btfsc	PIR1, RCIF
     goto	IRx
+    btfsc	INTCON, T0IF
+    goto	IntTMR
     goto	IntOk
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -100,6 +113,17 @@ START:
 	movlw	0x30
 	movwf	INTCON
 	bcf	STATUS, RP0
+	
+	; voy con el TIM
+	clrf	TMR0
+	bsf	STATUS, RP0
+	bsf	OPTION_REG, PS0
+	bcf	OPTION_REG, PS1
+	bsf	OPTION_REG, PS2
+	bcf	OPTION_REG, PSA
+	bcf	OPTION_REG, T0CS
+	bcf	STATUS, RP0
+	bsf	INTCON, T0IE
 	
 	; Inicializo variables
 	clrf	cntrx
@@ -164,6 +188,7 @@ START:
 	movlw	0x6
 	movwf	vreg
 	call	lcd_w
+	bcf	INTCON, T0IF
 	bsf	INTCON,PEIE
 	bsf	INTCON,GIE
 	; Espero que este listo el LCD
@@ -240,6 +265,38 @@ DelMS:
 	goto	DelMS
 	return
 	
+ConverDec:
+	clrf	cmov
+	
+cargak:	movlw	valcnv
+	addwf	cmov, W
+	movwf	FSR
+	movlw	'0'
+	movwf	INDF
+	movlw	high T_cont
+	movwf	PCLATH
+	movfw	cmov
+	call	T_cont
+	movwf	const	; cargo el valor
+	
+operak:
+	movfw	const
+	subwf	entcnv,w
+	btfss	STATUS, C
+	goto	cambiak
+	incf	INDF,f
+	movfw	const
+	subwf	entcnv,f ; disminuyo
+	goto	operak
+
+cambiak:
+	incf	cmov,f
+	movfw	cmov
+	sublw	0x3
+	btfss	STATUS, Z
+	goto	cargak
+	return
+	
 lcd_w:
 	movfw	PORTA
 	andlw	0xf0
@@ -281,11 +338,10 @@ segLin:
 	movwf	verr
 	call 	visu
 	bsf	PORTA, rs
-	movlw	0x11
+	movlw	0x10
 	movwf	cntc
 	return
 
-	
 borrar_lcd:
 	bcf	PORTA, rs
 	clrf	vreg
@@ -307,6 +363,7 @@ stx:
 	movfw	treg
 	movwf	TXREG
 	bsf	STATUS, RP0
+
 buecho:
 	btfss	TXSTA, TRMT
 	goto	buecho
@@ -317,20 +374,23 @@ prcTrama:
 	bcf	band, prcrx
 	bsf	PORTB, bussy
 	movfw	drx
-	sublw	#'a'
-	btfsc	STATUS,Z  ; 0x1, imprimir caracter
+	sublw	0xA ;#'a'
+	btfsc	STATUS,Z  ; 0xA, imprimir caracter
 	goto	impc
 	movfw	drx
-	sublw	#'b'
-	btfsc	STATUS, Z ; 0x2, borrar pantalla
+	sublw	0xB ;#'b'
+	btfsc	STATUS, Z ; 0xB, borrar pantalla
 	goto	borr
 	movfw	drx
-	sublw	#'c'
+	sublw	0xC ; #'c'
+	btfsc	STATUS, Z ; 0xC, Cambiar de lineas
 	goto	camLin
 	movfw	drx
-	sublw	#'d'
+	sublw	0xD ;#'d
+	btfsc	STATUS, Z ; 0xD, el siguiente caracter lo leo como numero
 	goto	impd
 	goto	fprc
+
 impc:
 	movlw	drx
 	addlw	0x1
@@ -348,27 +408,36 @@ impc:
 	btfsc	STATUS, Z
 	call	priLin
 	goto	fprc
+
 camLin:
 	movlw	drx
 	addlw	0x1
 	movwf	FSR
 	movfw	INDF
 	sublw	0x1
-	btfss	STATUS, Z
+	btfsc	STATUS, Z
 	goto	cam1
 	call	segLin
 	goto	fprc
+
 cam1:
 	call	priLin
 	goto	fprc
+
 impd:
 	movlw	drx
 	addlw	0x1
 	movwf	FSR
-	movlw	high T_nums
-	movwf	PCLATH
 	movfw	INDF
-	call	T_nums
+	movwf	entcnv
+	call	ConverDec
+	clrf	cmov
+
+impdci:
+	movlw	valcnv
+	addwf	cmov,w
+	movwf	FSR
+	movfw	INDF
 	movwf	verr
 	call	visu
 	incf	cntc,f
@@ -377,12 +446,19 @@ impd:
 	btfsc	STATUS, Z
 	call	segLin
 	movfw	cntc
-	sublw	0x1f
+	sublw	0x20
 	btfsc	STATUS, Z
 	call	priLin
+	incf	cmov,f
+	movfw	cmov
+	sublw	0x3
+	btfss	STATUS, Z
+	goto	impdci
 	goto	fprc
+	
 borr:
 	call	borrar_lcd
+
 fprc:
 	bcf	PORTB, bussy
 	return
@@ -408,16 +484,31 @@ IRx:
 	movwf	INDF
 	incf	cntrx,f
 	movfw	cntrx
-	sublw	0x3
+	sublw	0x2
 	btfss	STATUS,Z
 	goto	fIRx
 	clrf	cntrx
-	bsf	band,prcrx	
+	bsf	band,prcrx
+	bcf	band, recb
+	goto	IntOk
 fIRx:
+	clrf	TMR0
+	bsf	band, recb
 	bsf	band,echo
 	goto	IntOk
 	
+IntTMR:
+	bcf	INTCON, T0IF
+	btfss	band, recb
+	goto	IntOk
+	bcf	band, recb
+	clrf	cntrx
+	goto	IntOk
+	
+	
 IntOk:
+	movfw	fsrt
+	movwf	FSR
 	movfw	statt
 	movwf	STATUS
 	movfw	wregt
@@ -441,7 +532,7 @@ T_msg:
 	retlw #'K'
 	retlw #'<'
 	
-T_nums
+T_nums:
 	addwf PCL,f
 	retlw #'0'
 	retlw #'1'
@@ -454,6 +545,13 @@ T_nums
 	retlw #'8'
 	retlw #'9'
 	retlw #'.'
+	
+T_cont:
+	addwf PCL,f
+	retlw 0x64
+	retlw 0xA
+	retlw 0x1
+	retlw 0x0
 
 
 
