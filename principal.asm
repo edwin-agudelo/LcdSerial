@@ -24,6 +24,8 @@
 ; 2020-12-04: Se ajusta la parte de los 2 carac-
 ;	      teres, se ajusta el tiempo de 
 ;	      timeout para la recepcion de datos.
+; 2023-03   : Se cambian varias funciones y se 
+;	      reacomoda el codigo para dar claridad.
 ;===============================================
 
 	include "p16f628a.inc"
@@ -46,7 +48,8 @@ entcnv	equ	0x2d	; registro para almacenar los datos a convertir
 const	equ	0x2e	; registro para almacenar la constante a restar en la conversion
 cmov	equ	0x2f	; registro para almacenar el actual desplazamiento
 fsrt	equ	0x30	; registro para almecenar el valor del registro FSR
-valcnv	equ	0x31	; registro inicial para almacenar el valor a convertir
+nlinea  equ	0x31	; registro para almacenar el numero de linea actual
+valcnv	equ	0x32	; registro inicial para almacenar el valor a convertir
 drx	equ	0x38	; inicio de los registros que se reciben
 
 ; Flags y valores de pines
@@ -129,6 +132,11 @@ START:
 	clrf	cntrx
 	clrf	cntc
 	
+	
+	; **************************************
+	; Esta parte inicializa el LCD
+	; **************************************
+	
 	; Alisto la LCD para escribir
 	bsf	PORTA, rs
 	bsf	PORTA, rw
@@ -194,16 +202,16 @@ START:
 	; Espero que este listo el LCD
 	
 	bsf	PORTA,rs
+	clrf	nlinea
 	clrf	cont
 	clrf	band
 	bsf	PORTB, bcklg
 	bsf	PORTB, bussy
-ciclo:
+wellcome_1:
 	movfw	cont
 	sublw	0x8
 	btfsc	STATUS,Z
-	goto	ms2
-	;goto	acabo
+	goto	ini_w2
 	movlw	high T_msg
 	movwf	PCLATH
 	movfw	cont
@@ -212,15 +220,15 @@ ciclo:
 	call	visu
 	incf	cntc,f
 	incf	cont,f
-	goto	ciclo
-ms2:
-	call	segLin
+	goto	wellcome_1
+ini_w2:
+	call	CambioLinea
 	clrf	cont
-ciclo2:
+wellcome_2:
 	movfw	cont
-	sublw	0x9
+	sublw	0x8
 	btfsc	STATUS,Z
-	goto	acabo
+	goto	ciclo_principal
 	movlw	high T_msg
 	movwf	PCLATH
 	movfw	cont
@@ -229,12 +237,14 @@ ciclo2:
 	call	visu
 	incf	cntc,f
 	incf	cont,f
-	goto	ciclo2
+	goto	wellcome_2
 	
-acabo:
-	btfsc	band, prcrx
+ciclo_principal:
+	btfsc	band,prcrx
 	call	prcTrama
-	goto	acabo
+	nop
+	nop
+	goto	ciclo_principal
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -242,7 +252,9 @@ acabo:
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;*********************************************	
 ; rutina de retraso de 10us 
+;*********************************************	
 Delay:
 	nop
 	nop
@@ -257,6 +269,9 @@ Delay:
 	goto 	Delay
 	return
 	
+;*********************************************	
+; rutina de retraso por ms	
+;*********************************************	
 DelMS:
 	movlw	0x64
 	movwf	delayr
@@ -265,10 +280,13 @@ DelMS:
 	goto	DelMS
 	return
 	
+;*********************************************	
+; Convierte de numeros a caracteres 
+;*********************************************	
 ConverDec:
 	clrf	cmov
-	
-cargak:	movlw	valcnv
+cargak:	
+	movlw	valcnv
 	addwf	cmov, W
 	movwf	FSR
 	movlw	'0'
@@ -278,7 +296,6 @@ cargak:	movlw	valcnv
 	movfw	cmov
 	call	T_cont
 	movwf	const	; cargo el valor
-	
 operak:
 	movfw	const
 	subwf	entcnv,w
@@ -288,7 +305,6 @@ operak:
 	movfw	const
 	subwf	entcnv,f ; disminuyo
 	goto	operak
-
 cambiak:
 	incf	cmov,f
 	movfw	cmov
@@ -297,6 +313,9 @@ cambiak:
 	goto	cargak
 	return
 	
+;*********************************************	
+; Escribe los 4 bits bajos en la LCD
+;*********************************************	
 lcd_w:
 	movfw	PORTA
 	andlw	0xf0
@@ -309,6 +328,10 @@ lcd_w:
 	call	Delay
 	return
 	
+;*********************************************	
+; Coordina la escritura de un byte (8 bits)
+; en una LCD
+;*********************************************	
 visu:
 	movfw	verr
 	andlw	0xf0
@@ -321,27 +344,47 @@ visu:
 	call	lcd_w
 	return
 	
-priLin:
-	bcf	band, lact
+;*********************************************	
+; Cambia de linea
+;*********************************************	
+CambioLinea:
 	clrf	cntc
-	bcf	PORTA, rs
-	movlw	0x80
-	movwf	verr
-	call 	visu
-	bsf	PORTA, rs
-	return
-	
+	movfw	nlinea
+	sublw	0x1
+	btfsc	STATUS,Z
+	goto	priLin
+
+;*********************************************	
+; Salta el cursor a la segunda linea
+;*********************************************	
 segLin:
-	bcf	band, lact
+	movlw	0x1
+	movwf	nlinea
 	bcf	PORTA, rs
 	movlw	0xC0
 	movwf	verr
 	call 	visu
 	bsf	PORTA, rs
-	movlw	0x10
-	movwf	cntc
 	return
+	
+;*********************************************	
+; Salta el cursor a la primera linea
+;*********************************************	
+priLin:
+	clrf	nlinea
+	bcf	PORTA, rs
+	movlw	0x80
+	movwf	verr
+	call 	visu
+	bsf	PORTA, rs	
+	return
+	
 
+;*********************************************	
+; Borra todos los caracteres de la LCD
+; y deja el cursor en la primera posicion
+; en la primera linea
+;*********************************************	
 borrar_lcd:
 	bcf	PORTA, rs
 	clrf	vreg
@@ -357,6 +400,7 @@ borrar_lcd:
 	call	Delay
 	bsf	PORTA, rs
 	clrf	cntc
+	clrf	nlinea
 	return
 	
 stx:
@@ -370,28 +414,36 @@ buecho:
 	bcf	STATUS, RP0
 	return
 	
+;*********************************************	
+; Procesa la trama recibida por el puerto
+; serial
+;*********************************************	
 prcTrama:
 	bcf	band, prcrx
 	bsf	PORTB, bussy
 	movfw	drx
-	sublw	0xA ;#'a'
+	sublw	0xA 
 	btfsc	STATUS,Z  ; 0xA, imprimir caracter
-	goto	impc
+	goto	imprimir_caracter
 	movfw	drx
-	sublw	0xB ;#'b'
+	sublw	0xB 
 	btfsc	STATUS, Z ; 0xB, borrar pantalla
-	goto	borr
+	goto	borrar_pantalla
 	movfw	drx
-	sublw	0xC ; #'c'
+	sublw	0xC  
 	btfsc	STATUS, Z ; 0xC, Cambiar de lineas
-	goto	camLin
+	goto	cambiar_linea
 	movfw	drx
-	sublw	0xD ;#'d
+	sublw	0xD 
 	btfsc	STATUS, Z ; 0xD, el siguiente caracter lo leo como numero
-	goto	impd
-	goto	fprc
-
-impc:
+	goto	imprimir_numero
+	goto	fin_prcTrama
+	
+;*********************************************	
+; Toma el caracter recibido y lo imprime
+; en la LCD
+;*********************************************	
+imprimir_caracter:
 	movlw	drx
 	addlw	0x1
 	movwf	FSR
@@ -402,29 +454,27 @@ impc:
 	movfw	cntc
 	sublw	0x10
 	btfsc	STATUS, Z
-	call	segLin
-	movfw	cntc
-	sublw	0x20
-	btfsc	STATUS, Z
-	call	priLin
-	goto	fprc
+	call	CambioLinea
+	goto	fin_prcTrama
 
-camLin:
-	movlw	drx
-	addlw	0x1
-	movwf	FSR
-	movfw	INDF
-	sublw	0x1
-	btfsc	STATUS, Z
-	goto	cam1
-	call	segLin
-	goto	fprc
+;*********************************************	
+; Borra la LCD
+;*********************************************	
+borrar_pantalla:
+	call	borrar_lcd
+	goto	fin_prcTrama
 
-cam1:
-	call	priLin
-	goto	fprc
+;*********************************************	
+; Cambia la linea de la LCD por comando
+;*********************************************	
+cambiar_linea:
+	call	CambioLinea
+	goto	fin_prcTrama
 
-impd:
+;*********************************************	
+; Procesa la llegada de un numero
+;*********************************************	
+imprimir_numero:
 	movlw	drx
 	addlw	0x1
 	movwf	FSR
@@ -432,8 +482,7 @@ impd:
 	movwf	entcnv
 	call	ConverDec
 	clrf	cmov
-
-impdci:
+imprimir_digito:
 	movlw	valcnv
 	addwf	cmov,w
 	movwf	FSR
@@ -444,22 +493,14 @@ impdci:
 	movfw	cntc
 	sublw	0x10
 	btfsc	STATUS, Z
-	call	segLin
-	movfw	cntc
-	sublw	0x20
-	btfsc	STATUS, Z
-	call	priLin
+	call	CambioLinea
 	incf	cmov,f
 	movfw	cmov
 	sublw	0x3
 	btfss	STATUS, Z
-	goto	impdci
-	goto	fprc
-	
-borr:
-	call	borrar_lcd
+	goto	imprimir_digito
 
-fprc:
+fin_prcTrama:
 	bcf	PORTB, bussy
 	return
 
@@ -469,12 +510,19 @@ fprc:
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;*********************************************	
+; Borra por IRQ
+;*********************************************	
 Irq:
 	bcf	INTCON, INTF
 	call	borrar_lcd
 	goto	IntOk
 
+;*********************************************	
+; Recibe un caracter por RS232
+;*********************************************	
 IRx:
+	clrf	TMR0
 	movfw	RCREG
 	movwf	temp
 	movfw	cntrx
@@ -489,22 +537,23 @@ IRx:
 	goto	fIRx
 	clrf	cntrx
 	bsf	band,prcrx
-	bcf	band, recb
+	bcf	band,recb
 	goto	IntOk
 fIRx:
-	clrf	TMR0
-	bsf	band, recb
+	bsf	band,recb
 	bsf	band,echo
 	goto	IntOk
-	
+
+;*********************************************	
+; Procesa la Int por timer
+;*********************************************	
 IntTMR:
 	bcf	INTCON, T0IF
-	btfss	band, recb
+	btfss	band,recb
 	goto	IntOk
-	bcf	band, recb
+	bcf	band,recb
 	clrf	cntrx
 	goto	IntOk
-	
 	
 IntOk:
 	movfw	fsrt
